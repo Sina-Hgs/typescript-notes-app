@@ -1,35 +1,78 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import "bootstrap/dist/css/bootstrap.min.css"
+import { Container } from "react-bootstrap"
 
-function App() {
-  const [count, setCount] = useState(0)
+import {useMemo} from "react"
 
-  return (
-    <>
-      <div>
-        <a href="https://vitejs.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+import {Routes, Route, Navigate} from "react-router-dom"
+
+import NewNotes from "./components/NewNotes/NewNotes"
+import { useLocalStorage } from "./hooks/useLocalStorage/useLocalStorage"
+
+import {v4 as uuidV4} from "uuid"
+
+
+export type RawNotes={
+  id: string
+} & RawNotesData
+
+export type RawNotesData={
+  title: string
+  markdown: string
+  tagIds: string[]
+}
+
+export type Note={
+  id: string
+} & NoteData
+
+export type NoteData={
+  title: string
+  markdown: string
+  tags: Tag[]
+}
+
+export type Tag={
+  id: string
+  label: string
+}
+
+
+const App=()=>{
+
+  const [notes,setNotes]=useLocalStorage<RawNotes[]>("NOTES",[])
+  const [tags,setTags]=useLocalStorage<Tag[]>("TAGS",[])
+
+  const notesWithTage=useMemo(()=>
+    {
+      return notes.map(notes=>{
+        return {...notes, tags: tags.filter(tag=>notes.tagIds.includes(tag.id))}
+      })
+    }
+  ,[notes, tags])
+
+  const onCreateNotes=({tags ,...data}:NoteData)=>{
+    setNotes(prevNotes=>{
+      return [...prevNotes,{...data, id: uuidV4(), tagIds: tags.map(tag=>tag.id)}]
+    })
+  }
+
+  const addTag=(tag: Tag)=>{
+  setTags(prev=>[...prev,tag])
+}
+
+  return(
+    <Container className="my-4">
+      <Routes>
+      <Route path="/" element={<h1>HOME</h1>}></Route> 
+      <Route path="/new" element={<NewNotes onSubmit={onCreateNotes} onAddTag={addTag} availableTags={tags} />}></Route>
+      <Route path="/:id" >
+        <Route index element={<h1>SHOW</h1>}></Route>
+        <Route path="edit" element={<h1>Edit</h1>}></Route>
+      </Route>
+      <Route path="/*" element={<Navigate to="/new" />}></Route>
+      </Routes>
+  </Container>
   )
 }
 
-export default App
+export default App;
